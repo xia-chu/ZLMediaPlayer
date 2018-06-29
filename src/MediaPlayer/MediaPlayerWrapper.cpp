@@ -367,7 +367,7 @@ MediaPlayerWrapperHelper& MediaPlayerWrapperHelper::Instance() {
         if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) == -1) {
 	    string err = "初始化SDL失败:";
         err+= SDL_GetError();
-        FatalL << err;
+        ErrorL << err;
         throw std::runtime_error(err);
         }
         SDL_LogSetAllPriority(SDL_LOG_PRIORITY_CRITICAL);

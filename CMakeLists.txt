@@ -1,5 +1,6 @@
 project(MediaPlayer)
 cmake_minimum_required(VERSION 2.8)
+#SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 
 #使能c++11
 #add_compile_options(-std=c++11)
@@ -58,7 +59,7 @@ find_package(AVCODEC QUIET)
 if (AVCODEC_FOUND)
     include_directories(${AVCODEC_INCLUDE_DIR})
     list(APPEND LINK_LIB_LIST ${AVCODEC_LIBRARIES})
-    message(STATUS "找到libavcodec库:\"${AVCODEC_INCLUDE_DIR}\"")
+    message(STATUS "找到libavcodec库:\"${AVCODEC_INCLUDE_DIR} ${AVCODEC_LIBRARIES}\"")
 endif (AVCODEC_FOUND)
 
 #查找ffmpeg/libavcodec是否安装
@@ -66,7 +67,7 @@ find_package(AVUTIL QUIET)
 if (AVUTIL_FOUND)
     include_directories(${AVUTIL_INCLUDE_DIR})
     list(APPEND LINK_LIB_LIST ${AVUTIL_LIBRARIES})
-    message(STATUS "找到libavutil库:\"${AVUTIL_INCLUDE_DIR}\"")
+    message(STATUS "找到libavutil库:\"${AVUTIL_INCLUDE_DIR} ${AVUTIL_LIBRARIES}\"")
 endif (AVUTIL_FOUND)
 
 #查找SDL2是否安装
