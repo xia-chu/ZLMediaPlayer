@@ -60,7 +60,7 @@ static onceToken s_token([]() {
 #endif//defined(_WIN32)
 
     Logger::Instance().add(std::make_shared<ConsoleChannel>("stdout", LTrace));
-    EventPoller::Instance(true);
+    EventPoller::Instance().runLoop(false);
 
     s_videoRenderTimer.reset(new AsyncTaskThread(5));//全局的视频渲染时钟
     s_videoDecodeThread.reset(new ThreadPool(1)); //全局的视频渲染时钟

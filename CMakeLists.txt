@@ -14,7 +14,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_BINARY_DIR}/lib)
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_BINARY_DIR}/bin)
 
 #设置工程源码根目录
-set(ToolKit_Root ${CMAKE_SOURCE_DIR}/../ZLToolKit/src)
+set(ToolKit_Root ${CMAKE_SOURCE_DIR}/../ZLMediaKit/ZLToolKit/src)
 set(MediaKit_Root ${CMAKE_SOURCE_DIR}/../ZLMediaKit/src)
 set(MediaPlayer_Root ${CMAKE_SOURCE_DIR}/src)
 
