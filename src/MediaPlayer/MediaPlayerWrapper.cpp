@@ -34,6 +34,7 @@
 #include "Poller/EventPoller.h"
 
 #define REFRESH_EVENT   (SDL_USEREVENT + 1)
+#define EXIT_EVENT   (SDL_USEREVENT + 2)
 
 using namespace std;
 using namespace ZL::Util;
@@ -61,45 +62,45 @@ public:
         SDL_PushEvent(&event);
     }
 
-
-private:
-    SDLDisplayerHelper(){
-        _loopThread.reset(new std::thread(&SDLDisplayerHelper::runLoop,this));
-    };
-    ~SDLDisplayerHelper(){
+    void stopLoop(){
         doTask([](){return false;});
-        _loopThread->join();
-        _loopThread.reset();
-    };
+    }
 
     void runLoop(){
+        lock_guard<mutex> lck(_mtxLoop);
         bool flag = true;
         std::function<bool ()> task;
         SDL_Event event;
         while(flag){
             SDL_WaitEvent(&event);
-            if (event.type == REFRESH_EVENT)
-            {
-                {
-                    lock_guard<mutex> lck(_mtxTask);
-                    if(_taskList.empty()){
-                        //not reachable
-                        continue;
+            switch(event.type){
+                case REFRESH_EVENT:{
+                    {
+                        lock_guard<mutex> lck(_mtxTask);
+                        if(_taskList.empty()){
+                            //not reachable
+                            continue;
+                        }
+                        task = _taskList.front();
+                        _taskList.pop_front();
                     }
-                    task = _taskList.front();
-                    _taskList.pop_front();
+                    flag = task();
                 }
-                flag = task();
+                    break;
             }
-
         }
     }
-
-
+private:
+    SDLDisplayerHelper(){
+    };
+    ~SDLDisplayerHelper(){
+        stopLoop();
+        lock_guard<mutex> lck(_mtxLoop);
+    };
+private:
     std::deque<std::function<bool ()> > _taskList;
-    std::shared_ptr<thread> _loopThread;
     std::mutex _mtxTask;
-
+    std::mutex _mtxLoop;
 };
 
 class MediaPlayerDelegateHelper : public MediaPlayerDelegate
@@ -164,15 +165,12 @@ void MediaPlayerWrapperDelegate::onDrawFrame(MediaPlayerWrapper *sender, const s
         _display.reset(new YuvDisplayer(win));
 	}
 	if (_display) {
-#if defined(__linux__)
+	    //切换到sdl线程去渲染画面
         auto displayTmp = _display;
         SDLDisplayerHelper::Instance().doTask([displayTmp,frame](){
             displayTmp->displayYUV(frame->frame.get());
             return true;
         });
-#else
-        _display->displayYUV(frame->frame.get());
-#endif
 	}
 }
 
@@ -362,27 +360,52 @@ MediaPlayerWrapperHelper::MediaPlayerWrapperHelper() {
 MediaPlayerWrapperHelper:: ~MediaPlayerWrapperHelper() {
 }
 
+static MediaPlayerWrapperHelper *g_instance;
 MediaPlayerWrapperHelper& MediaPlayerWrapperHelper::Instance() {
+	return *g_instance;
+}
+
+void MediaPlayerWrapperHelper::globalInitialization() {
     static onceToken token([]() {
-        if(SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) == -1) {
-	    string err = "初始化SDL失败:";
-        err+= SDL_GetError();
-        ErrorL << err;
-        throw std::runtime_error(err);
+        {
+            //初始化sdl相关资源
+            if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) == -1) {
+                string err = "初始化SDL失败:";
+                err += SDL_GetError();
+                ErrorL << err;
+                throw std::runtime_error(err);
+            }
+            SDL_LogSetAllPriority(SDL_LOG_PRIORITY_CRITICAL);
+            SDL_LogSetOutputFunction([](void *userdata, int category, SDL_LogPriority priority, const char *message) {
+                DebugL << category << " " << priority << message;
+            }, nullptr);
+            SDLDisplayerHelper::Instance();
         }
-        SDL_LogSetAllPriority(SDL_LOG_PRIORITY_CRITICAL);
-        SDL_LogSetOutputFunction([](void *userdata, int category, SDL_LogPriority priority, const char *message){
-            DebugL << category << " " <<  priority << message;
-        },nullptr);
-        InfoL << "SDL_Init";
-    }, []() {
-#if defined(__linux__)
-        SDLDisplayerHelper::Destory();
-#endif
-        SDL_Quit();
-        InfoL << "SDL_Quit";
+
+        //初始化ZLMediaKit库
+        MediaPlayerImp::globalInitialization();
+        //新建MediaPlayerWrapperHelper单例
+        g_instance = new MediaPlayerWrapperHelper();
     });
 
-	static MediaPlayerWrapperHelper instance;
-	return instance;
+}
+
+void MediaPlayerWrapperHelper::globalUninitialization() {
+    static onceToken token(nullptr,[]() {
+        //释放MediaPlayerWrapperHelper单例
+        delete g_instance;
+        //反初始化ZLMediaKit库
+        MediaPlayerImp::globalUninitialization();
+        //释放sdl相关资源
+        SDLDisplayerHelper::Destory();
+        SDL_Quit();
+    });
+}
+
+void MediaPlayerWrapperHelper::runSdlLoop() {
+    SDLDisplayerHelper::Instance().runLoop();
+}
+
+void MediaPlayerWrapperHelper::stopSdlLoop() {
+    SDLDisplayerHelper::Instance().stopLoop();
 }

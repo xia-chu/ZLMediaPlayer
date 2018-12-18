@@ -136,8 +136,14 @@ public:
 	void addDelegate(const char *url,MediaPlayerWrapperDelegate * delegate);
 	void delDelegate(const char *url, MediaPlayerWrapperDelegate * delegate);
 	std::shared_ptr<MediaPlayerWrapper> getPlayer(const char *url);
+
+	static void globalInitialization();
+    static void globalUninitialization();
+    static void runSdlLoop();
+    static void stopSdlLoop();
 private:
 	recursive_mutex _mutex;
     MediaPlayerWrapper::onTask _ontask;
 	unordered_map<string, std::shared_ptr<MediaPlayerWrapper> > _mapPlayer;
 };
+

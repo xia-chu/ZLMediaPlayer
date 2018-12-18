@@ -75,7 +75,8 @@ int WINAPI WinMain(HINSTANCE hInstance, //WinMain∫Ø ˝Àµ√˜
 		NULL, //¥À¥∞ø⁄Œﬁ÷˜≤Àµ•
 		hInstance, //¥¥Ω®¥À¥∞ø⁄µƒ”¶”√≥Ã–Úµƒµ±«∞æ‰±˙
 		NULL); //≤ª π”√∏√÷µ
-	
+
+    MediaPlayerWrapperHelper::globalInitialization();
     MediaPlayerWrapperHelper::Instance().addDelegate("rtmp://live.hkstv.hk.lxdns.com/live/hks", new MediaPlayerWrapperDelegateImp(hwnd));
     MediaPlayerWrapperHelper::Instance().getPlayer("rtmp://live.hkstv.hk.lxdns.com/live/hks")->setPauseAuto(false);
 	/*MediaPlayerWrapper::Ptr player(new MediaPlayerWrapper());
@@ -103,6 +104,8 @@ int WINAPI WinMain(HINSTANCE hInstance, //WinMain∫Ø ˝Àµ√˜
 		DispatchMessage(&Msg);
 		//MediaPlayerWrapperHelper::Instance().getPlayer("rtsp://192.168.0.233/live/test0")->reDraw();
 	}
+
+    MediaPlayerWrapperHelper::globalUninitialization();
 	return Msg.wParam; //œ˚œ¢—≠ª∑Ω· ¯º¥≥Ã–Ú÷’÷π ±Ω´–≈œ¢∑µªÿœµÕ≥
 }
 
@@ -124,11 +127,26 @@ LRESULT CALLBACK WndProc(HWND hwnd,
 #else
 #include <unistd.h>
 int main(int argc,char *argv[]){
+	//监听SIGINT信号,在按下 Ctrl + C后将调用stopSdlLoop方法通知runSdlLoop函数退出
+	signal(SIGINT, [](int) { MediaPlayerWrapperHelper::stopSdlLoop();});
+
+	//初始化基础网络库
+    MediaPlayerWrapperHelper::globalInitialization();
+
+
 	for(int i = 1 ;i < argc ; i++){
+		//添加播放器实例，你可以这么执行本程序: ./test_player rtmp://127.0.0.1/live/0 rtsp://127.0.0.1/live/0 ...
 		MediaPlayerWrapperHelper::Instance().addDelegate(argv[i], new MediaPlayerWrapperDelegateImp(nullptr));
 		MediaPlayerWrapperHelper::Instance().getPlayer(argv[i])->setPauseAuto(false);
 	}
-    sleep(10000);
+
+	//执行sdl渲染循环线程，该操作将导致此线程阻塞
+	//在macOS Majove 系统下,sdl渲染线程必须在main函数中执行，否则会黑屏
+	//windows/linux系统下可以在后台线程执行runSdlLoop
+	MediaPlayerWrapperHelper::runSdlLoop();
+
+	//释放基础网络库
+    MediaPlayerWrapperHelper::globalUninitialization();
 }
 
 

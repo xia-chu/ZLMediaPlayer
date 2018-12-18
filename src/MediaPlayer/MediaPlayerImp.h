@@ -88,6 +88,9 @@ public:
 	int getPCMSampleRate() override;
 	int getPCMChannel() override;
 	int getPCMData(char *buf, int bufsize) override;
+
+	static void globalInitialization();
+	static void globalUninitialization();
 private:
 	std::shared_ptr<MediaPlayerDelegate> _delegate;
 	uint32_t _audioPktMS = 0;//每个音频包的时长（单位毫秒）

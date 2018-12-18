@@ -48,9 +48,10 @@ static shared_ptr<AsyncTaskThread> s_videoRenderTimer;//全局的视频渲染时
 static shared_ptr<ThreadPool> s_videoDecodeThread; //全局的视频渲染时钟
 static shared_ptr<Ticker> s_screenIdleTicker;//熄屏定时器
 
-static onceToken s_token([]() {
+void MediaPlayerImp::globalInitialization() {
+    static onceToken s_token([]() {
 #if defined(_WIN32)
-    static onceToken g_token([]() {
+        static onceToken g_token([]() {
         WORD wVersionRequested = MAKEWORD(2, 2);
         WSADATA wsaData;
         WSAStartup(wVersionRequested, &wsaData);
@@ -59,28 +60,37 @@ static onceToken s_token([]() {
     });
 #endif//defined(_WIN32)
 
-    Logger::Instance().add(std::make_shared<ConsoleChannel>("stdout", LTrace));
-    EventPoller::Instance().runLoop(false);
+        Logger::Instance().add(std::make_shared<ConsoleChannel>("stdout", LTrace));
+        EventPoller::Instance().runLoop(false);
 
-    s_videoRenderTimer.reset(new AsyncTaskThread(5));//全局的视频渲染时钟
-    s_videoDecodeThread.reset(new ThreadPool(1)); //全局的视频渲染时钟
-    s_screenIdleTicker.reset(new Ticker);//熄屏定时器
+        s_videoRenderTimer.reset(new AsyncTaskThread(5));//全局的视频渲染时钟
+        s_videoDecodeThread.reset(new ThreadPool(1)); //全局的视频渲染时钟
+        s_screenIdleTicker.reset(new Ticker);//熄屏定时器
 
-    s_videoRenderTimer->DoTaskDelay(0, 3 * 1000, []() {
-        if (s_screenIdleTicker->elapsedTime() > 3 * 1000) {
-            //熄灭屏幕
-        }
-        return true;
+        s_videoRenderTimer->DoTaskDelay(0, 3 * 1000, []() {
+            if (s_screenIdleTicker->elapsedTime() > 3 * 1000) {
+                //熄灭屏幕
+            }
+            return true;
+        });
     });
-}, []() {
-    s_videoRenderTimer.reset();
-    s_videoDecodeThread.reset();
-    s_screenIdleTicker.reset();
+}
 
-    UDPServer::Destory();
-    EventPoller::Destory();
-    Logger::Destory();
-});
+void MediaPlayerImp::globalUninitialization() {
+    static onceToken s_token(nullptr, []() {
+        s_videoRenderTimer.reset();
+        s_videoDecodeThread.reset();
+        s_screenIdleTicker.reset();
+
+        //rtsp服务器用到udp端口分配器了
+        UDPServer::Destory();
+        EventPoller::Destory();
+        AsyncTaskThread::Destory();
+        Logger::Destory();
+    });
+}
+
+
 
 void MediaPlayerImp::setOnThreadSwitch(const onTask &cb) {
     if (cb) {
@@ -483,3 +493,5 @@ void MediaPlayerImp::reDraw() {
 #endif
     }
 }
+
+
