@@ -126,6 +126,7 @@ LRESULT CALLBACK WndProc(HWND hwnd,
 }
 #else
 #include <unistd.h>
+#include <signal.h>
 int main(int argc,char *argv[]){
 	//监听SIGINT信号,在按下 Ctrl + C后将调用stopSdlLoop方法通知runSdlLoop函数退出
 	signal(SIGINT, [](int) { MediaPlayerWrapperHelper::stopSdlLoop();});
