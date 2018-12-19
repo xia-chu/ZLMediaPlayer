@@ -80,6 +80,11 @@ endif (SDL2_FOUND)
 
 
 add_executable(test_player src/test_player.cpp)
+
+IF (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    list(APPEND LINK_LIB_LIST swresample z)
+endif()
+
 target_link_libraries(test_player mediaplayer zlmediakit zltoolkit ${LINK_LIB_LIST})
 
 
